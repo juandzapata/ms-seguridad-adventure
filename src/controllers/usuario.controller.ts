@@ -8,8 +8,15 @@ import {
   Where
 } from '@loopback/repository';
 import {
-  del, get,
-  getModelSchemaRef, HttpErrors, param, patch, post, put, requestBody,
+  del,
+  get,
+  getModelSchemaRef,
+  HttpErrors,
+  param,
+  patch,
+  post,
+  put,
+  requestBody,
   response
 } from '@loopback/rest';
 import {CredencialesLogin, Usuario} from '../models';
@@ -19,7 +26,7 @@ import {SeguridadUsuarioService} from '../services';
 export class UsuarioController {
   constructor(
     @repository(UsuarioRepository)
-    public usuarioRepository : UsuarioRepository,
+    public usuarioRepository: UsuarioRepository,
     @service(SeguridadUsuarioService)
     private servicioSeguridad: SeguridadUsuarioService,
   ) {}
@@ -50,9 +57,7 @@ export class UsuarioController {
     description: 'Usuario model count',
     content: {'application/json': {schema: CountSchema}},
   })
-  async count(
-    @param.where(Usuario) where?: Where<Usuario>,
-  ): Promise<Count> {
+  async count(@param.where(Usuario) where?: Where<Usuario>): Promise<Count> {
     return this.usuarioRepository.count(where);
   }
 
@@ -104,7 +109,8 @@ export class UsuarioController {
   })
   async findById(
     @param.path.string('id') id: string,
-    @param.filter(Usuario, {exclude: 'where'}) filter?: FilterExcludingWhere<Usuario>
+    @param.filter(Usuario, {exclude: 'where'})
+    filter?: FilterExcludingWhere<Usuario>,
   ): Promise<Usuario> {
     return this.usuarioRepository.findById(id, filter);
   }
@@ -149,25 +155,29 @@ export class UsuarioController {
   /**
    * El bloque de métodos personalizados para la seguridad del usuario
    */
-   @post('/login')
-   @response(200, {
-     description: 'Identificación de usuarios',
-     content: {'application/json': {schema: getModelSchemaRef(CredencialesLogin)}},
-   })
-   async identificar(
-     @requestBody({
-       content: {
-         'application/json': {
-           schema: getModelSchemaRef(CredencialesLogin),
-         },
-       },
-     })
-     credenciales: CredencialesLogin,
-   ): Promise<string> {
-     try{
+  @post('/login')
+  @response(200, {
+    description: 'Identificación de usuarios',
+    content: {
+      'application/json': {schema: getModelSchemaRef(CredencialesLogin)},
+    },
+  })
+  async identificar(
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: getModelSchemaRef(CredencialesLogin),
+        },
+      },
+    })
+    credenciales: CredencialesLogin,
+  ): Promise<string> {
+    try {
       return this.servicioSeguridad.identificarUsuario(credenciales);
-     }catch (err){
-      throw new HttpErrors[400](`Se ha generado un error en la validación de las credenciales para el usuario: ${credenciales.correo}`);
-     }
-   }
+    } catch (err) {
+      throw new HttpErrors[400](
+        `Se ha generado un error en la validación de las credenciales para el usuario: ${credenciales.correo}`,
+      );
+    }
+  }
 }
