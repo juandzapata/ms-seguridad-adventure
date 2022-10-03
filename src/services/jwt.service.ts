@@ -1,6 +1,6 @@
 import { /* inject, */ BindingScope, injectable} from '@loopback/core';
 import {Keys} from '../config/keys';
-const jwt = require('jsonwebtoken');
+let jwt = require('jsonwebtoken');
 
 @injectable({scope: BindingScope.TRANSIENT})
 export class JwtService {
@@ -13,7 +13,7 @@ export class JwtService {
    */
   crearToken(info: object): string {
     try {
-      const token = jwt.sign({foo: 'bar'}, Keys.jwtSecretKey);
+      let token = jwt.sign(info, Keys.jwtSecretKey);
       return token;
     } catch (err) {
       throw err;

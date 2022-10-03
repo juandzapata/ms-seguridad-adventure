@@ -1,6 +1,6 @@
-import {Entity, model, property, belongsTo, hasMany} from '@loopback/repository';
-import {Rol} from './rol.model';
+import {belongsTo, Entity, hasMany, model, property} from '@loopback/repository';
 import {AuditoriaLogin} from './auditoria-login.model';
+import {Rol} from './rol.model';
 
 @model({settings: {strict: false}})
 export class Usuario extends Entity {
@@ -33,13 +33,12 @@ export class Usuario extends Entity {
     type: 'string',
     required: true,
   })
-  email: string;
+  correo: string;
 
   @property({
     type: 'string',
-    required: true,
   })
-  clave: string;
+  clave?: string;
 
   @belongsTo(() => Rol)
   rolId: string;

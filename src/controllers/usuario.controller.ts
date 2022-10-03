@@ -49,6 +49,11 @@ export class UsuarioController {
     })
     usuario: Omit<Usuario, '_id'>,
   ): Promise<Usuario> {
+
+    let claveGenerada = this.servicioSeguridad.crearClaveAleatoria();
+    let claveCifrada = this.servicioSeguridad.cifrarCadena(claveGenerada);
+    usuario.clave = claveCifrada;
+    // Notificar al usuario de que se ha creado en el sistema
     return this.usuarioRepository.create(usuario);
   }
 
@@ -162,6 +167,7 @@ export class UsuarioController {
       'application/json': {schema: getModelSchemaRef(CredencialesLogin)},
     },
   })
+
   async identificar(
     @requestBody({
       content: {
@@ -170,10 +176,10 @@ export class UsuarioController {
         },
       },
     })
-    credenciales: CredencialesLogin,
+    credenciales: CredencialesLogin
   ): Promise<string> {
     try {
-      return this.servicioSeguridad.identificarUsuario(credenciales);
+      return await this.servicioSeguridad.identificarUsuario(credenciales);
     } catch (err) {
       throw new HttpErrors[400](
         `Se ha generado un error en la validación de las credenciales para el usuario: ${credenciales.correo}`,
