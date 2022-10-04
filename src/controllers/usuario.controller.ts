@@ -21,7 +21,7 @@ import {
 } from '@loopback/rest';
 import {CredencialesLogin, Usuario} from '../models';
 import {UsuarioRepository} from '../repositories';
-import {SeguridadUsuarioService} from '../services';
+import {JwtService, SeguridadUsuarioService} from '../services';
 
 export class UsuarioController {
   constructor(
@@ -29,7 +29,9 @@ export class UsuarioController {
     public usuarioRepository: UsuarioRepository,
     @service(SeguridadUsuarioService)
     private servicioSeguridad: SeguridadUsuarioService,
-  ) {}
+    @service(JwtService)
+    private servicioJWT: JwtService
+  ) { }
 
   @post('/usuarios')
   @response(200, {
@@ -185,5 +187,22 @@ export class UsuarioController {
         `Se ha generado un error en la validación de las credenciales para el usuario: ${credenciales.correo}`,
       );
     }
+  }
+
+  @get('/validate-token/{jwt}')
+  @response(200, {
+    description: 'Validar un token JWT',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(Object),
+      },
+    },
+  })
+
+  async validateJWT(
+    @param.path.string('jwt') jwt: string,
+  ): Promise<string> {
+    let valido = this.servicioJWT.validarToken(jwt);
+    return valido;
   }
 }
