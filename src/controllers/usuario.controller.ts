@@ -19,7 +19,7 @@ import {
   requestBody,
   response
 } from '@loopback/rest';
-import {CredencialesLogin, Usuario} from '../models';
+import {CredencialesLogin, CredencialesRecuperarClave, Usuario} from '../models';
 import {UsuarioRepository} from '../repositories';
 import {JwtService, SeguridadUsuarioService} from '../services';
 
@@ -205,4 +205,35 @@ export class UsuarioController {
     let valido = this.servicioJWT.validarToken(jwt);
     return valido;
   }
+
+
+  /**
+   * El bloque de métodos personalizados para la seguridad del usuario
+   */
+   @post('/recuperar-clave')
+   @response(200, {
+     description: 'Identificación de usuarios',
+     content: {
+       'application/json': {schema: getModelSchemaRef(CredencialesLogin)},
+     },
+   })
+
+   async RecuperarClave(
+     @requestBody({
+       content: {
+         'application/json': {
+           schema: getModelSchemaRef(CredencialesRecuperarClave),
+         },
+       },
+     })
+     credenciales: CredencialesRecuperarClave
+   ): Promise<Boolean> {
+     try {
+       return await this.servicioSeguridad.recuperarClave(credenciales);
+     } catch (err) {
+       throw new HttpErrors[400](
+         `Se ha generado un error en la recuperaciónde la clave para el correo: ${credenciales.correo}`,
+       );
+     }
+   }
 }
