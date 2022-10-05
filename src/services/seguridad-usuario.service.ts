@@ -83,48 +83,47 @@ export class SeguridadUsuarioService {
   }
 
   /**
-   * Se recupera la clave generandola aleatoriamente y enviandola por correo
-   * @param credenciales credenciales del usuario a recuperar la contraseña
+   * Se recupera una clave generandola aleatoriamente y enviandola por correo
+   * @param credenciales credenciales del usuario a recuperar la clave
    */
-  async recuperarClave(
-    credenciales: CredencialesRecuperarClave,
-  ): Promise<Boolean> {
+   async recuperarClave(credenciales: CredencialesRecuperarClave): Promise<boolean> {
+
     let usuario = await this.usuarioRepository.findOne({
       where: {
-        correo: credenciales.correo,
-      },
+        correo: credenciales.correo
+      }
     });
 
     if (usuario) {
-
       let nuevaClave = this.crearClaveAleatoria();
       let nuevaClaveCifrada = this.cifrarCadena(nuevaClave);
       usuario.clave = nuevaClaveCifrada;
       this.usuarioRepository.updateById(usuario._id, usuario);
 
-      let mensaje = `Hola ${usuario.nombres} <br /> Su contraseña ha sido actualizada satisfactoriamente y la nueva es ${nuevaClave}. <br /> <br /> Si no ha sido usted o no logra acceder a la cuenta, comuníquese al +573104572663 <br /><br /> Equipo de soporte Adventure Park.`;
+      let mensaje = `Hola ${usuario.nombres} <br /> Su contraseña ha sido actualizada satisfactoriamente. La nueva contraseña es: ${nuevaClave}.<br /> Si no ha sido usted o no logra acceder a la cuenta, comuníquese con +573136824950. <br /><br /> Equipo de soporte U de Caldas.`
+
       params.append('hash_validator', 'Admin12345@notificaciones.sender');
-      params.append('destination', usuario.correo)
-      params.append('subject', Keys.mensajeAsuntoRecuperaClave)
-      params.append('message', mensaje)
+      params.append('destination', usuario.correo);
+      params.append('subject', Keys.mensajeAsuntoRecuperacion);
+      params.append('message', mensaje);
 
+      let r = "";
 
-      let r = ''
-      await fetch(Keys.urlEnviarCorreo, {
-        method: 'POST',
-        body: params,
-      }).then(async (res: any) => {
+      console.log(params);
+      console.log(Keys.urlEnviarCorreo);
+
+      console.log("1");
+
+      await fetch(Keys.urlEnviarCorreo, {method: 'POST', body: params}).then(async (res: any) => {
+        console.log("2");
         r = await res.text();
-        console.log(r);
-      });
-      console.log('R:' + r);
+      })
+
 
       return r == "OK";
 
     } else {
-      throw new HttpErrors[400](
-        'El correo ingresado no está asociado a ningún usuario.',
-      );
+      throw new HttpErrors[400]('El correo ingresado no esta asociado a un usuario');
     }
   }
 }
