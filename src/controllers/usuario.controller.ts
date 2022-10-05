@@ -56,7 +56,9 @@ export class UsuarioController {
     let claveCifrada = this.servicioSeguridad.cifrarCadena(claveGenerada);
     usuario.clave = claveCifrada;
     // Notificar al usuario de que se ha creado en el sistema
-    return this.usuarioRepository.create(usuario);
+    const usuarioCreado = await this.usuarioRepository.create(usuario);
+    await this.servicioSeguridad.correoPrimerContraseña(usuario.correo, claveGenerada);
+    return usuarioCreado;
   }
 
   @get('/usuarios/count')

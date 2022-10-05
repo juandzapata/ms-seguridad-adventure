@@ -27,10 +27,14 @@ export class SeguridadUsuarioService {
   async identificarUsuario(credenciales: CredencialesLogin): Promise<string> {
     let respuesta = '';
 
+    //Para que el usuario pueda ingresar la clave sin cifrar
+    let clave = credenciales.clave;
+    let claveCifrada = this.cifrarCadena(clave);
+
     const usuario = await this.usuarioRepository.findOne({
       where: {
         correo: credenciales.correo,
-        clave: credenciales.clave,
+        clave: claveCifrada,
       },
     });
 
@@ -88,6 +92,7 @@ export class SeguridadUsuarioService {
    */
    async recuperarClave(credenciales: CredencialesRecuperarClave): Promise<boolean> {
 
+
     let usuario = await this.usuarioRepository.findOne({
       where: {
         correo: credenciales.correo
@@ -100,7 +105,7 @@ export class SeguridadUsuarioService {
       usuario.clave = nuevaClaveCifrada;
       this.usuarioRepository.updateById(usuario._id, usuario);
 
-      let mensaje = `Hola ${usuario.nombres} <br /> Su contraseña ha sido actualizada satisfactoriamente. La nueva contraseña es: ${nuevaClave}.<br /> Si no ha sido usted o no logra acceder a la cuenta, comuníquese con +573136824950. <br /><br /> Equipo de soporte U de Caldas.`
+      let mensaje = `Hola ${usuario.nombres} <br /> Su contraseña ha sido actualizada satisfactoriamente. La nueva contraseña es: ${nuevaClave}.<br /> Si no ha sido usted o no logra acceder a la cuenta, comuníquese con +573136824950. <br /><br /> Equipo de soporte Adventure Park.`
 
       params.append('hash_validator', 'Admin12345@notificaciones.sender');
       params.append('destination', usuario.correo);
@@ -125,5 +130,42 @@ export class SeguridadUsuarioService {
     } else {
       throw new HttpErrors[400]('El correo ingresado no esta asociado a un usuario');
     }
+  }
+
+  async correoPrimerContraseña(correo: string, claveGenerada: string): Promise<Boolean>{
+    let usuario = await this.usuarioRepository.findOne({
+      where:{
+        correo: correo
+      }
+    });
+
+    if (usuario) {
+
+      let mensaje = `Hola ${usuario.nombres} <br /> Su usuario ha sido creado satisfactoriamente con el correo: ${correo} y contraseña: ${claveGenerada} <br /> Para modificar la contraseña ingrese al sistema. Si posee problemas para acceder a la cuenta comuníquese con +573136824950. <br /><br /> Equipo de soporte Adventure park.`
+
+      params.append('hash_validator', 'Admin12345@notificaciones.sender');
+      params.append('destination', correo);
+      params.append('subject', Keys.mensajeAsuntoRegistro);
+      params.append('message', mensaje);
+
+      let r = "";
+
+      console.log(params);
+      console.log(Keys.urlEnviarCorreo);
+
+      console.log("1");
+
+      await fetch(Keys.urlEnviarCorreo, {method: 'POST', body: params}).then(async (res: any) => {
+        console.log("2");
+        r = await res.text();
+      })
+
+
+      return r == "OK";
+
+    } else {
+      throw new HttpErrors[400]('Error con la confirmación de la creación del usuario');
+    }
+
   }
 }
