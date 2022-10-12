@@ -55,6 +55,8 @@ export class UsuarioController {
     let claveGenerada = this.servicioSeguridad.crearClaveAleatoria();
     let claveCifrada = this.servicioSeguridad.cifrarCadena(claveGenerada);
     usuario.clave = claveCifrada;
+    console.log(claveGenerada);
+
     // Notificar al usuario de que se ha creado en el sistema
     const usuarioCreado = await this.usuarioRepository.create(usuario);
     await this.servicioSeguridad.correoPrimerContraseña(usuario.correo, claveGenerada);
