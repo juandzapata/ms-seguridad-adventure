@@ -5,7 +5,7 @@ import {
   Filter,
   FilterExcludingWhere,
   repository,
-  Where
+  Where,
 } from '@loopback/repository';
 import {
   del,
@@ -17,9 +17,13 @@ import {
   post,
   put,
   requestBody,
-  response
+  response,
 } from '@loopback/rest';
-import {CredencialesLogin, CredencialesRecuperarClave, Usuario} from '../models';
+import {
+  CredencialesLogin,
+  CredencialesRecuperarClave,
+  Usuario,
+} from '../models';
 import {UsuarioRepository} from '../repositories';
 import {JwtService, SeguridadUsuarioService} from '../services';
 
@@ -30,8 +34,8 @@ export class UsuarioController {
     @service(SeguridadUsuarioService)
     private servicioSeguridad: SeguridadUsuarioService,
     @service(JwtService)
-    private servicioJWT: JwtService
-  ) { }
+    private servicioJWT: JwtService,
+  ) {}
 
   @post('/usuarios')
   @response(200, {
@@ -51,7 +55,6 @@ export class UsuarioController {
     })
     usuario: Omit<Usuario, '_id'>,
   ): Promise<Usuario> {
-
     let claveGenerada = this.servicioSeguridad.crearClaveAleatoria();
     let claveCifrada = this.servicioSeguridad.cifrarCadena(claveGenerada);
     usuario.clave = claveCifrada;
@@ -59,7 +62,10 @@ export class UsuarioController {
 
     // Notificar al usuario de que se ha creado en el sistema
     const usuarioCreado = await this.usuarioRepository.create(usuario);
-    await this.servicioSeguridad.correoPrimerContraseña(usuario.correo, claveGenerada);
+    await this.servicioSeguridad.correoPrimerContraseña(
+      usuario.correo,
+      claveGenerada,
+    );
     return usuarioCreado;
   }
 
@@ -85,6 +91,7 @@ export class UsuarioController {
     },
   })
   async find(
+    //comentario
     @param.filter(Usuario) filter?: Filter<Usuario>,
   ): Promise<Usuario[]> {
     return this.usuarioRepository.find(filter);
@@ -173,7 +180,6 @@ export class UsuarioController {
       'application/json': {schema: getModelSchemaRef(CredencialesLogin)},
     },
   })
-
   async identificar(
     @requestBody({
       content: {
@@ -182,7 +188,7 @@ export class UsuarioController {
         },
       },
     })
-    credenciales: CredencialesLogin
+    credenciales: CredencialesLogin,
   ): Promise<string> {
     try {
       return await this.servicioSeguridad.identificarUsuario(credenciales);
@@ -202,42 +208,37 @@ export class UsuarioController {
       },
     },
   })
-
-  async validateJWT(
-    @param.path.string('jwt') jwt: string,
-  ): Promise<string> {
+  async validateJWT(@param.path.string('jwt') jwt: string): Promise<string> {
     let valido = this.servicioJWT.validarToken(jwt);
     return valido;
   }
 
-
   /**
    * El bloque de métodos personalizados para la seguridad del usuario
    */
-   @post('/recuperar-clave')
-   @response(200, {
-     description: 'Identificación de usuarios',
-     content: {
-       'application/json': {schema: getModelSchemaRef(CredencialesLogin)},
-     },
-   })
-
-   async RecuperarClave(
-     @requestBody({
-       content: {
-         'application/json': {
-           schema: getModelSchemaRef(CredencialesRecuperarClave),
-         },
-       },
-     })
-     credenciales: CredencialesRecuperarClave
-   ): Promise<Boolean> {
-     try {
-       return await this.servicioSeguridad.recuperarClave(credenciales);
-     } catch (err) {
-       throw new HttpErrors[400](
-         `Se ha generado un error en la recuperaciónde la clave para el correo: ${credenciales.correo}`,
-       );
-     }
-   }
+  @post('/recuperar-clave')
+  @response(200, {
+    description: 'Identificación de usuarios',
+    content: {
+      'application/json': {schema: getModelSchemaRef(CredencialesLogin)},
+    },
+  })
+  async RecuperarClave(
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: getModelSchemaRef(CredencialesRecuperarClave),
+        },
+      },
+    })
+    credenciales: CredencialesRecuperarClave,
+  ): Promise<Boolean> {
+    try {
+      return await this.servicioSeguridad.recuperarClave(credenciales);
+    } catch (err) {
+      throw new HttpErrors[400](
+        `Se ha generado un error en la recuperaciónde la clave para el correo: ${credenciales.correo}`,
+      );
+    }
+  }
 }
