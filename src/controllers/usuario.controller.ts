@@ -208,34 +208,50 @@ export class UsuarioController {
     return valido;
   }
 
+  @get('/validate-code/{code}')
+  @response(200, {
+    description: 'Validar código',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(Object),
+      },
+    },
+  })
+  async validateCode(
+    @param.path.string('code') codigo: string,
+  ): Promise<string> {
+    let valido = this.servicioSeguridad.validarCodigo(codigo);
+    return valido;
+  }
+
 
   /**
    * El bloque de métodos personalizados para la seguridad del usuario
    */
-   @post('/recuperar-clave')
-   @response(200, {
-     description: 'Identificación de usuarios',
-     content: {
-       'application/json': {schema: getModelSchemaRef(CredencialesLogin)},
-     },
-   })
+  @post('/recuperar-clave')
+  @response(200, {
+    description: 'Identificación de usuarios',
+    content: {
+      'application/json': {schema: getModelSchemaRef(CredencialesLogin)},
+    },
+  })
 
-   async RecuperarClave(
-     @requestBody({
-       content: {
-         'application/json': {
-           schema: getModelSchemaRef(CredencialesRecuperarClave),
-         },
-       },
-     })
-     credenciales: CredencialesRecuperarClave
-   ): Promise<Boolean> {
-     try {
-       return await this.servicioSeguridad.recuperarClave(credenciales);
-     } catch (err) {
-       throw new HttpErrors[400](
-         `Se ha generado un error en la recuperaciónde la clave para el correo: ${credenciales.correo}`,
-       );
-     }
-   }
+  async RecuperarClave(
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: getModelSchemaRef(CredencialesRecuperarClave),
+        },
+      },
+    })
+    credenciales: CredencialesRecuperarClave
+  ): Promise<Boolean> {
+    try {
+      return await this.servicioSeguridad.recuperarClave(credenciales);
+    } catch (err) {
+      throw new HttpErrors[400](
+        `Se ha generado un error en la recuperaciónde la clave para el correo: ${credenciales.correo}`,
+      );
+    }
+  }
 }
