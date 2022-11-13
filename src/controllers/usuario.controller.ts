@@ -189,9 +189,10 @@ export class UsuarioController {
       },
     })
     credenciales: CredencialesLogin,
-  ): Promise<string> {
+  ): Promise<object> {
     try {
-      return await this.servicioSeguridad.identificarUsuario(credenciales);
+      let obj = await this.servicioSeguridad.identificarUsuario(credenciales);
+      return obj;
     } catch (err) {
       throw new HttpErrors[400](
         `Se ha generado un error en la validación de las credenciales para el usuario: ${credenciales.correo}`,
