@@ -30,6 +30,7 @@ export class SeguridadUsuarioService {
         nombre: '',
         correo: '',
         rol: '',
+        id: '',
       },
     };
 
@@ -50,10 +51,11 @@ export class SeguridadUsuarioService {
 
     if (usuario) {
       // Creación del token y asignación a respuesta
-      const datos = {
+      let datos = {
         nombre: `${usuario.nombres} ${usuario.apellidos}`,
         correo: usuario.correo,
         rol: usuario.rolId,
+        id: usuario._id ? usuario._id : '',
       };
       try {
         let tk = this.servicioJwt.crearToken(datos);
