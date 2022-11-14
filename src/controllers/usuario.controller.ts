@@ -242,4 +242,25 @@ export class UsuarioController {
       );
     }
   }
+
+  /**
+   *
+   * @param jwt
+   * @returns
+   */
+  @get('check-validate-token/{jwt}')
+  @response(200, {
+    description: 'Validar un token JWT',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(Object),
+      },
+    },
+  })
+  async checkSessionJWT(
+    @param.path.string('jwt') jwt: string,
+  ): Promise<boolean> {
+    let rolId = this.servicioJWT.validarToken(jwt);
+    return rolId != '';
+  }
 }

@@ -1,4 +1,4 @@
-import { /* inject, */ BindingScope, injectable} from '@loopback/core';
+import {/* inject, */ BindingScope, injectable} from '@loopback/core';
 import {Keys} from '../config/keys';
 let jwt = require('jsonwebtoken');
 
@@ -31,7 +31,7 @@ export class JwtService {
       console.log(info.rol);
       return info.rol;
     } catch (err) {
-      return "";
+      return '';
     }
   }
 }
