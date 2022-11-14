@@ -214,6 +214,22 @@ export class UsuarioController {
     return valido;
   }
 
+  @get('/validate-code/{code}')
+  @response(200, {
+    description: 'Validar código',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(Object),
+      },
+    },
+  })
+  async validateCode(
+    @param.path.string('code') codigo: string,
+  ): Promise<string> {
+    let valido = this.servicioSeguridad.validarCodigo(codigo);
+    return valido;
+  }
+
   /**
    * El bloque de métodos personalizados para la seguridad del usuario
    */
@@ -224,6 +240,7 @@ export class UsuarioController {
       'application/json': {schema: getModelSchemaRef(CredencialesLogin)},
     },
   })
+
   async RecuperarClave(
     @requestBody({
       content: {
@@ -233,6 +250,7 @@ export class UsuarioController {
       },
     })
     credenciales: CredencialesRecuperarClave,
+    credenciales: CredencialesRecuperarClave
   ): Promise<Boolean> {
     try {
       return await this.servicioSeguridad.recuperarClave(credenciales);
@@ -242,6 +260,7 @@ export class UsuarioController {
       );
     }
   }
+
 
   /**
    *
@@ -263,4 +282,5 @@ export class UsuarioController {
     let rolId = this.servicioJWT.validarToken(jwt);
     return rolId != '';
   }
+
 }
