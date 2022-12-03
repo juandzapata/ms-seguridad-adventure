@@ -243,6 +243,7 @@ export class UsuarioController {
       'application/json': {schema: getModelSchemaRef(CredencialesLogin)},
     },
   })
+
   async RecuperarClave(
     @requestBody({
       content: {
@@ -252,6 +253,7 @@ export class UsuarioController {
       },
     })
     credenciales: CredencialesRecuperarClave,
+    credenciales: CredencialesRecuperarClave
   ): Promise<Boolean> {
     try {
       return await this.servicioSeguridad.recuperarClave(credenciales);
@@ -338,6 +340,7 @@ export class UsuarioController {
     }
   }
 
+
   /**
    *
    * @param jwt
@@ -358,4 +361,5 @@ export class UsuarioController {
     let rolId = this.servicioJWT.validarToken(jwt);
     return rolId != '';
   }
+
 }

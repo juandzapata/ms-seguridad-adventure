@@ -14,6 +14,10 @@ import {JwtService} from './jwt.service';
 var generator = require('generate-password');
 var md5 = require('crypto-js/md5');
 
+const params = new URLSearchParams();
+const paramsSMS = new URLSearchParams();
+
+
 @injectable({scope: BindingScope.TRANSIENT})
 export class SeguridadUsuarioService {
   constructor(
@@ -22,14 +26,16 @@ export class SeguridadUsuarioService {
     @service(JwtService)
     private servicioJwt: JwtService,
     @repository(VerificacionCodigoRepository)
+    
     private codigoRepository: VerificacionCodigoRepository,
   ) {}
 
   /**
-   * Método para la autenticación de usuarios
+   * Metodo para la autenticacion de usuarios
    * @param credenciales credenciales de acceso
-   * @returns una cadena con el token cuando todo está bien, o una cadena vacia cuando no coinciden las credenciales
+   * @returns cadena con el token cuando todo esta bien, o una cadena vacia cuando no coinciden las credenciales.
    */
+
   async identificarUsuario(
     credenciales: CredencialesLogin,
   ): Promise<object | null> {
@@ -44,22 +50,38 @@ export class SeguridadUsuarioService {
       imagenPerfil: '',
     };
 
+    //Para que el usuario pueda ingresar la clave sin cifrar
+    let clave = credenciales.clave;
+    //let claveCifrada = this.cifrarCadena(clave); //Se omite este paso porque el frontend envia la clave cifrada
+  async identificarUsuario(credenciales: CredencialesLogin): Promise<string> {
+    let respuesta = "";
+
     const usuario = await this.usuarioRepository.findOne({
       where: {
         correo: credenciales.correo,
         clave: credenciales.clave,
       },
+        clave: credenciales.clave
+      }
     });
 
     if (usuario) {
       try {
         let codigo = this.crearCodigoAleatorio();
         let mensaje = `¡Hola ${usuario.nombres}! <br /> Tu código de verificación es: ${codigo}`;
+        let tk = this.servicioJwt.crearToken(datos);
+        respuesta.token = tk;
+        respuesta.user = datos;
+        console.log(respuesta);
+      try {
+        let codigo = this.crearCodigoAleatorio();
+        let mensaje = `¡Hola ${usuario.nombres}! <br /> Tu código de verificación es: ${codigo}`
 
         params.append('hash_validator', 'Admin12345@notificaciones.sender');
         params.append('destination', usuario.correo);
         params.append('subject', Keys.mensajeAsuntoVerificacion);
         params.append('message', mensaje);
+
 
         let r = '';
 
@@ -74,6 +96,21 @@ export class SeguridadUsuarioService {
         });
 
         mensaje = `¡Hola ${usuario.nombres}! Tu código de verificación es: ${codigo}`;
+
+        let r = "";
+
+        //console.log(params);
+        //console.log(Keys.urlEnviarCorreo);
+
+        await fetch(Keys.urlEnviarCorreo, {method: 'POST', body: params}).then(async (res: any) => {
+          r = await res.text();
+        });
+
+        console.log("aqui");
+
+
+        mensaje = `¡Hola ${usuario.nombres}! Tu código de verificación es: ${codigo}`
+
         paramsSMS.append('hash_validator', 'Admin12345@notificaciones.sender');
         paramsSMS.append('message', mensaje);
         paramsSMS.append('destination', usuario.celular);
@@ -83,6 +120,7 @@ export class SeguridadUsuarioService {
             r = await res.text();
           },
         );
+
 
         const codigoVerificacion = await this.codigoRepository.create({
           usuarioId: usuario.correo,
@@ -98,11 +136,18 @@ export class SeguridadUsuarioService {
           id: usuario._id ? usuario._id : '',
           imagenPerfil: usuario.imagenPerfil ? usuario.imagenPerfil : '',
         };
+        });
+
+        //console.log(codigoVerificacion);
+        respuesta = 'Código enviado.'
+
+
       } catch (err) {
         throw err;
       }
       return respuesta;
     } else {
+
       return null;
     }
   }
@@ -137,6 +182,20 @@ export class SeguridadUsuarioService {
   }
 
   /**
+   * Genera un codigo aleatorio
+   * @returns codigo generado
+   */
+  crearCodigoAleatorio(): string {
+    let codigo = generator.generate({
+      length: 4,
+      numbers: true,
+    });
+
+    console.log(codigo);
+    return codigo;
+  }
+
+  /**
    * Cifra una cadena
    * @param cadena Una cadena para cifrar
    * @returns la cadena cifrada
@@ -150,10 +209,13 @@ export class SeguridadUsuarioService {
    * Se recupera una clave generandola aleatoriamente y enviandola por correo
    * @param credenciales credenciales del usuario a recuperar la clave
    */
+   
   async recuperarClave(
     credenciales: CredencialesRecuperarClave,
   ): Promise<boolean> {
     const params = new URLSearchParams();
+    
+  async recuperarClave(credenciales: CredencialesRecuperarClave): Promise<boolean> {
     let usuario = await this.usuarioRepository.findOne({
       where: {
         correo: credenciales.correo,
@@ -202,6 +264,11 @@ export class SeguridadUsuarioService {
       where: {
         correo: correo,
       },
+  async correoPrimerContraseña(correo: string, claveGenerada: string): Promise<Boolean> {
+    let usuario = await this.usuarioRepository.findOne({
+      where: {
+        correo: correo
+      }
     });
 
     if (usuario) {
@@ -275,11 +342,13 @@ export class SeguridadUsuarioService {
             let token = this.servicioJwt.crearToken(datos);
             respuesta.token = token;
             respuesta.user = datos;
+           
           } catch (error) {
             throw error;
           }
         }
       } else {
+
         console.log('No se esta retornando ningun token');
       }
       return respuesta;
@@ -324,4 +393,5 @@ export class SeguridadUsuarioService {
 
     return verificar;
   }
+
 }
