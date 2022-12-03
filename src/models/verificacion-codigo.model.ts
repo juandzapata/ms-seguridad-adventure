@@ -36,4 +36,5 @@ export interface VerificacionCodigoRelations {
   // describe navigational properties here
 }
 
-export type VerificacionCodigoWithRelations = VerificacionCodigo & VerificacionCodigoRelations;
+export type VerificacionCodigoWithRelations = VerificacionCodigo &
+  VerificacionCodigoRelations;
