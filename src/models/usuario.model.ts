@@ -1,4 +1,10 @@
-import {belongsTo, Entity, hasMany, model, property} from '@loopback/repository';
+import {
+  belongsTo,
+  Entity,
+  hasMany,
+  model,
+  property,
+} from '@loopback/repository';
 import {AuditoriaLogin} from './auditoria-login.model';
 import {Rol} from './rol.model';
 
@@ -39,6 +45,11 @@ export class Usuario extends Entity {
     type: 'string',
   })
   clave?: string;
+
+  @property({
+    type: 'string',
+  })
+  imagenPerfil?: string;
 
   @belongsTo(() => Rol)
   rolId: string;

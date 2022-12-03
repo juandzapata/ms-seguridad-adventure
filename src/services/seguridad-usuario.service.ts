@@ -3,8 +3,13 @@ import {repository} from '@loopback/repository';
 import {HttpErrors} from '@loopback/rest';
 import fetch from 'node-fetch';
 import {Keys} from '../config/keys';
-import {CredencialesLogin, CredencialesRecuperarClave} from '../models';
+import {
+  CredencialesLogin,
+  CredencialesRecuperarClave,
+  Usuario,
+} from '../models';
 import {UsuarioRepository} from '../repositories';
+import {VerificacionCodigoRepository} from '../repositories/verificacion-codigo.repository';
 import {JwtService} from './jwt.service';
 var generator = require('generate-password');
 var md5 = require('crypto-js/md5');
@@ -16,6 +21,8 @@ export class SeguridadUsuarioService {
     private usuarioRepository: UsuarioRepository,
     @service(JwtService)
     private servicioJwt: JwtService,
+    @repository(VerificacionCodigoRepository)
+    private codigoRepository: VerificacionCodigoRepository,
   ) {}
 
   /**
@@ -23,52 +30,95 @@ export class SeguridadUsuarioService {
    * @param credenciales credenciales de acceso
    * @returns una cadena con el token cuando todo está bien, o una cadena vacia cuando no coinciden las credenciales
    */
-  async identificarUsuario(credenciales: CredencialesLogin): Promise<object> {
-    let respuesta = {
-      token: '',
-      user: {
-        nombre: '',
-        correo: '',
-        rol: '',
-        id: '',
-      },
-    };
+  async identificarUsuario(
+    credenciales: CredencialesLogin,
+  ): Promise<object | null> {
+    const paramsSMS = new URLSearchParams();
+    const params = new URLSearchParams();
 
-    //Para que el usuario pueda ingresar la clave sin cifrar
-    let clave = credenciales.clave;
-    //let claveCifrada = this.cifrarCadena(clave); //Se omite este paso porque el frontend envia la clave cifrada
+    let respuesta = {
+      nombre: '',
+      correo: '',
+      rol: '',
+      id: '',
+      imagenPerfil: '',
+    };
 
     const usuario = await this.usuarioRepository.findOne({
       where: {
         correo: credenciales.correo,
-        clave: clave,
+        clave: credenciales.clave,
       },
     });
 
-    console.log(credenciales.correo);
-    console.log(credenciales.clave);
-    console.log(usuario);
-
     if (usuario) {
-      // Creación del token y asignación a respuesta
-      let datos = {
-        nombre: `${usuario.nombres} ${usuario.apellidos}`,
-        correo: usuario.correo,
-        rol: usuario.rolId,
-        id: usuario._id ? usuario._id : '',
-      };
       try {
-        let tk = this.servicioJwt.crearToken(datos);
-        respuesta.token = tk;
-        respuesta.user = datos;
-        console.log(respuesta);
+        let codigo = this.crearCodigoAleatorio();
+        let mensaje = `¡Hola ${usuario.nombres}! <br /> Tu código de verificación es: ${codigo}`;
+
+        params.append('hash_validator', 'Admin12345@notificaciones.sender');
+        params.append('destination', usuario.correo);
+        params.append('subject', Keys.mensajeAsuntoVerificacion);
+        params.append('message', mensaje);
+
+        let r = '';
+
+        console.log(params);
+        console.log(Keys.urlEnviarCorreoCodigo);
+
+        await fetch(Keys.urlEnviarCorreoCodigo, {
+          method: 'POST',
+          body: params,
+        }).then(async (res: any) => {
+          r = await res.text();
+        });
+
+        mensaje = `¡Hola ${usuario.nombres}! Tu código de verificación es: ${codigo}`;
+        paramsSMS.append('hash_validator', 'Admin12345@notificaciones.sender');
+        paramsSMS.append('message', mensaje);
+        paramsSMS.append('destination', usuario.celular);
+
+        await fetch(Keys.urlEnviarSMS, {method: 'POST', body: paramsSMS}).then(
+          async (res: any) => {
+            r = await res.text();
+          },
+        );
+
+        const codigoVerificacion = await this.codigoRepository.create({
+          usuarioId: usuario.correo,
+          codigo: codigo,
+          estado: false,
+        });
+
+        console.log(codigoVerificacion);
+        respuesta = {
+          nombre: `${usuario.nombres} ${usuario.apellidos}`,
+          correo: usuario.correo,
+          rol: usuario.rolId,
+          id: usuario._id ? usuario._id : '',
+          imagenPerfil: usuario.imagenPerfil ? usuario.imagenPerfil : '',
+        };
       } catch (err) {
         throw err;
       }
+      return respuesta;
     } else {
-      console.log('No se está retornando ningún token');
+      return null;
     }
-    return respuesta;
+  }
+
+  /**
+   * Genera un codigo aleatorio
+   * @returns codigo generado
+   */
+  crearCodigoAleatorio(): string {
+    let codigo = generator.generate({
+      length: 4,
+      numbers: true,
+    });
+
+    console.log(codigo);
+    return codigo;
   }
 
   /**
@@ -116,23 +166,21 @@ export class SeguridadUsuarioService {
       usuario.clave = nuevaClaveCifrada;
       this.usuarioRepository.updateById(usuario._id, usuario);
 
-      let mensaje = `Hola ${usuario.nombres} <br /> Su contraseña ha sido actualizada satisfactoriamente. La nueva contraseña es: ${nuevaClave}.<br /> Si no ha sido usted o no logra acceder a la cuenta, comuníquese con +573136824950. <br /><br /> Equipo de soporte Adventure Park.`;
+      let texto = 'Tu contraseña ha sido actualizada satisfactoriamente ';
 
       params.append('hash_validator', 'Admin12345@notificaciones.sender');
-      params.append('destination', usuario.correo);
-      params.append('subject', Keys.mensajeAsuntoRecuperacion);
-      params.append('message', mensaje);
+      params.append('correo', usuario.correo);
+      params.append('nombre', usuario.nombres);
+      params.append('texto', texto);
+      params.append('clave', nuevaClave);
 
       let r = '';
 
-      console.log(params);
-      console.log(Keys.urlEnviarCorreo);
-
-      console.log('1');
+      //console.log(params);
+      //console.log(Keys.urlEnviarCorreo);
 
       await fetch(Keys.urlEnviarCorreo, {method: 'POST', body: params}).then(
         async (res: any) => {
-          console.log('2');
           r = await res.text();
         },
       );
@@ -157,23 +205,18 @@ export class SeguridadUsuarioService {
     });
 
     if (usuario) {
-      let mensaje = `Hola ${usuario.nombres} <br /> Su usuario ha sido creado satisfactoriamente con el correo: ${correo} y contraseña: ${claveGenerada} <br /> Para modificar la contraseña ingrese al sistema. Si posee problemas para acceder a la cuenta comuníquese con +573136824950. <br /><br /> Equipo de soporte Adventure park.`;
+      let texto = 'Tu usuario ha sido creado satisfactoriamente ';
 
       params.append('hash_validator', 'Admin12345@notificaciones.sender');
-      params.append('destination', correo);
-      params.append('subject', Keys.mensajeAsuntoRegistro);
-      params.append('message', mensaje);
+      params.append('nombre', usuario.nombres);
+      params.append('correo', correo);
+      params.append('clave', claveGenerada);
+      params.append('texto', texto);
 
       let r = '';
 
-      console.log(params);
-      console.log(Keys.urlEnviarCorreo);
-
-      console.log('1');
-
       await fetch(Keys.urlEnviarCorreo, {method: 'POST', body: params}).then(
         async (res: any) => {
-          console.log('2');
           r = await res.text();
         },
       );
@@ -184,5 +227,101 @@ export class SeguridadUsuarioService {
         'Error con la confirmación de la creación del usuario',
       );
     }
+  }
+
+  /**
+   * Funcion para validar el codigo de usuario
+   * @param codigo tiene el codigo generado y el usuario al que pertenece
+   * @returns un JWT si el codigo es valido, si no retorna una cadena vacia
+   */
+  async validarCodigo(codigo: string): Promise<Object | null> {
+    let respuesta = {
+      token: '',
+      user: {
+        nombre: '',
+        correo: '',
+        rol: '',
+        id: '',
+        imagenPerfil: '',
+      },
+    };
+
+    let verificar = await this.codigoRepository.findOne({
+      where: {
+        codigo: codigo,
+      },
+    });
+
+    if (verificar) {
+      if (verificar.estado == false) {
+        verificar.estado = true;
+        this.codigoRepository.updateById(verificar._id, verificar);
+        let usuario = await this.usuarioRepository.findOne({
+          where: {
+            correo: verificar.usuarioId,
+          },
+        });
+
+        if (usuario) {
+          const datos = {
+            nombre: `${usuario.nombres} ${usuario.apellidos}`,
+            correo: usuario.correo,
+            rol: usuario.rolId,
+            id: usuario._id ? usuario._id : '',
+            imagenPerfil: usuario.imagenPerfil ? usuario.imagenPerfil : '',
+          };
+
+          try {
+            let token = this.servicioJwt.crearToken(datos);
+            respuesta.token = token;
+            respuesta.user = datos;
+          } catch (error) {
+            throw error;
+          }
+        }
+      } else {
+        console.log('No se esta retornando ningun token');
+      }
+      return respuesta;
+    } else {
+      return null;
+    }
+  }
+
+  async claveValida(credenciales: CredencialesLogin): Promise<Boolean> {
+    let respuesta = false;
+    let claveCifrada = this.cifrarCadena(credenciales.clave);
+    let verificar = await this.usuarioRepository.findOne({
+      where: {
+        correo: credenciales.correo,
+        clave: claveCifrada,
+      },
+    });
+
+    if (verificar) {
+      respuesta = true;
+    } else {
+      respuesta = false;
+    }
+
+    return respuesta;
+  }
+
+  async validarClave(credenciales: CredencialesLogin): Promise<Usuario | null> {
+    let claveCifrada = this.cifrarCadena(credenciales.clave);
+    let verificar = await this.usuarioRepository.findOne({
+      where: {
+        correo: credenciales.correo,
+        clave: claveCifrada,
+      },
+    });
+
+    if (verificar) {
+      console.log('Clave correcta, puede ingresar una clave nueva');
+    } else {
+      console.log('El usuario no existe');
+    }
+
+    return verificar;
   }
 }

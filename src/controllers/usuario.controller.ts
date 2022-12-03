@@ -19,6 +19,8 @@ import {
   requestBody,
   response,
 } from '@loopback/rest';
+import fetch from 'node-fetch';
+import {Keys} from '../config/keys';
 import {
   CredencialesLogin,
   CredencialesRecuperarClave,
@@ -189,10 +191,12 @@ export class UsuarioController {
       },
     })
     credenciales: CredencialesLogin,
-  ): Promise<object> {
+  ): Promise<object | null> {
     try {
-      let obj = await this.servicioSeguridad.identificarUsuario(credenciales);
-      return obj;
+      let mensaje = await this.servicioSeguridad.identificarUsuario(
+        credenciales,
+      );
+      return mensaje;
     } catch (err) {
       throw new HttpErrors[400](
         `Se ha generado un error en la validación de las credenciales para el usuario: ${credenciales.correo}`,
@@ -212,6 +216,21 @@ export class UsuarioController {
   async validateJWT(@param.path.string('jwt') jwt: string): Promise<string> {
     let valido = this.servicioJWT.validarToken(jwt);
     return valido;
+  }
+
+  @get('/validate-code/{code}')
+  @response(200, {
+    description: 'Validar código',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(Object),
+      },
+    },
+  })
+  async validateCode(
+    @param.path.string('code') codigo: string,
+  ): Promise<Object | null> {
+    return this.servicioSeguridad.validarCodigo(codigo);
   }
 
   /**
@@ -236,6 +255,82 @@ export class UsuarioController {
   ): Promise<Boolean> {
     try {
       return await this.servicioSeguridad.recuperarClave(credenciales);
+    } catch (err) {
+      throw new HttpErrors[400](
+        `Se ha generado un error en la recuperaciónde la clave para el correo: ${credenciales.correo}`,
+      );
+    }
+  }
+
+  @post('/validate-password-singup')
+  @response(200, {
+    description: 'Validar clave inicio de sesión',
+    content: {
+      'application/json': {schema: getModelSchemaRef(CredencialesLogin)},
+    },
+  })
+  async ConfirmarClave(
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: getModelSchemaRef(CredencialesLogin),
+        },
+      },
+    })
+    credenciales: CredencialesLogin,
+  ): Promise<Boolean> {
+    return this.servicioSeguridad.claveValida(credenciales);
+  }
+
+  @post('/validate-password/{newPassword}')
+  @response(200, {
+    description: 'Cambio de la clave',
+    content: {
+      'application/json': {schema: getModelSchemaRef(CredencialesLogin)},
+    },
+  })
+  async CambiarClave(
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: getModelSchemaRef(CredencialesLogin),
+        },
+      },
+    })
+    @param.path.string('newPassword')
+    newPassword: string,
+    credenciales: CredencialesLogin,
+  ): Promise<Boolean> {
+    try {
+      const params = new URLSearchParams();
+      let respuesta = false;
+      let user = await this.servicioSeguridad.validarClave(credenciales);
+      if (user) {
+        let newPasswordCifrada =
+          this.servicioSeguridad.cifrarCadena(newPassword);
+        user.clave = newPasswordCifrada;
+        this.usuarioRepository.updateById(user._id, user);
+
+        let texto = 'Tu clave ha sido actualizada satisfactoriamente ';
+
+        params.append('hash_validator', 'Admin12345@notificaciones.sender');
+        params.append('nombre', user.nombres);
+        params.append('correo', credenciales.correo);
+        params.append('clave', newPassword);
+        params.append('texto', texto);
+
+        let r = '';
+
+        await fetch(Keys.urlEnviarCorreo, {method: 'POST', body: params}).then(
+          async (res: any) => {
+            r = await res.text();
+          },
+        );
+
+        respuesta = true;
+      }
+
+      return respuesta;
     } catch (err) {
       throw new HttpErrors[400](
         `Se ha generado un error en la recuperaciónde la clave para el correo: ${credenciales.correo}`,
