@@ -5,7 +5,7 @@ import {
   Filter,
   FilterExcludingWhere,
   repository,
-  Where,
+  Where
 } from '@loopback/repository';
 import {
   del,
@@ -17,14 +17,14 @@ import {
   post,
   put,
   requestBody,
-  response,
+  response
 } from '@loopback/rest';
 import fetch from 'node-fetch';
 import {Keys} from '../config/keys';
 import {
   CredencialesLogin,
   CredencialesRecuperarClave,
-  Usuario,
+  Usuario
 } from '../models';
 import {UsuarioRepository} from '../repositories';
 import {JwtService, SeguridadUsuarioService} from '../services';
@@ -37,7 +37,7 @@ export class UsuarioController {
     private servicioSeguridad: SeguridadUsuarioService,
     @service(JwtService)
     private servicioJWT: JwtService,
-  ) {}
+  ) { }
 
   @post('/usuarios')
   @response(200, {
@@ -204,6 +204,21 @@ export class UsuarioController {
     }
   }
 
+  @get('/enviarSMS/{username}')
+  @response(200, {
+    description: 'Enviar SMS',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(Object),
+      },
+    },
+  })
+  async enviarSMS(
+    @param.path.string('username') username: string,
+  ): Promise<boolean> {
+    return this.servicioSeguridad.enviarSMS(username);
+  }
+
   @get('/validate-token/{jwt}')
   @response(200, {
     description: 'Validar un token JWT',
@@ -243,7 +258,6 @@ export class UsuarioController {
       'application/json': {schema: getModelSchemaRef(CredencialesLogin)},
     },
   })
-
   async RecuperarClave(
     @requestBody({
       content: {
@@ -253,7 +267,6 @@ export class UsuarioController {
       },
     })
     credenciales: CredencialesRecuperarClave,
-    credenciales: CredencialesRecuperarClave
   ): Promise<Boolean> {
     try {
       return await this.servicioSeguridad.recuperarClave(credenciales);
@@ -313,11 +326,13 @@ export class UsuarioController {
         user.clave = newPasswordCifrada;
         this.usuarioRepository.updateById(user._id, user);
 
-        let texto = 'Tu clave ha sido actualizada satisfactoriamente ';
+        let texto = 'Tu contraseña ha sido actualizada satisfactoriamente ';
+        let asunto = 'Cambio de contraseña';
 
         params.append('hash_validator', 'Admin12345@notificaciones.sender');
         params.append('nombre', user.nombres);
         params.append('correo', credenciales.correo);
+        params.append('asunto', asunto);
         params.append('clave', newPassword);
         params.append('texto', texto);
 
@@ -340,7 +355,6 @@ export class UsuarioController {
     }
   }
 
-
   /**
    *
    * @param jwt
@@ -361,5 +375,4 @@ export class UsuarioController {
     let rolId = this.servicioJWT.validarToken(jwt);
     return rolId != '';
   }
-
 }

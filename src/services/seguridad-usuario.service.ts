@@ -1,4 +1,4 @@
-import {/* inject, */ BindingScope, injectable, service} from '@loopback/core';
+import { /* inject, */ BindingScope, injectable, service} from '@loopback/core';
 import {repository} from '@loopback/repository';
 import {HttpErrors} from '@loopback/rest';
 import fetch from 'node-fetch';
@@ -6,17 +6,13 @@ import {Keys} from '../config/keys';
 import {
   CredencialesLogin,
   CredencialesRecuperarClave,
-  Usuario,
+  Usuario
 } from '../models';
 import {UsuarioRepository} from '../repositories';
 import {VerificacionCodigoRepository} from '../repositories/verificacion-codigo.repository';
 import {JwtService} from './jwt.service';
 var generator = require('generate-password');
 var md5 = require('crypto-js/md5');
-
-const params = new URLSearchParams();
-const paramsSMS = new URLSearchParams();
-
 
 @injectable({scope: BindingScope.TRANSIENT})
 export class SeguridadUsuarioService {
@@ -26,20 +22,17 @@ export class SeguridadUsuarioService {
     @service(JwtService)
     private servicioJwt: JwtService,
     @repository(VerificacionCodigoRepository)
-    
     private codigoRepository: VerificacionCodigoRepository,
-  ) {}
+  ) { }
 
   /**
-   * Metodo para la autenticacion de usuarios
+   * Método para la autenticación de usuarios
    * @param credenciales credenciales de acceso
-   * @returns cadena con el token cuando todo esta bien, o una cadena vacia cuando no coinciden las credenciales.
+   * @returns una cadena con el token cuando todo está bien, o una cadena vacia cuando no coinciden las credenciales
    */
-
   async identificarUsuario(
     credenciales: CredencialesLogin,
   ): Promise<object | null> {
-    const paramsSMS = new URLSearchParams();
     const params = new URLSearchParams();
 
     let respuesta = {
@@ -50,37 +43,25 @@ export class SeguridadUsuarioService {
       imagenPerfil: '',
     };
 
-    //Para que el usuario pueda ingresar la clave sin cifrar
-    let clave = credenciales.clave;
-    //let claveCifrada = this.cifrarCadena(clave); //Se omite este paso porque el frontend envia la clave cifrada
-  async identificarUsuario(credenciales: CredencialesLogin): Promise<string> {
-    let respuesta = "";
-
     const usuario = await this.usuarioRepository.findOne({
       where: {
         correo: credenciales.correo,
         clave: credenciales.clave,
       },
-        clave: credenciales.clave
-      }
     });
+
+    //console.log(usuario);
+
 
     if (usuario) {
       try {
         let codigo = this.crearCodigoAleatorio();
-        let mensaje = `¡Hola ${usuario.nombres}! <br /> Tu código de verificación es: ${codigo}`;
-        let tk = this.servicioJwt.crearToken(datos);
-        respuesta.token = tk;
-        respuesta.user = datos;
-        console.log(respuesta);
-      try {
-        let codigo = this.crearCodigoAleatorio();
-        let mensaje = `¡Hola ${usuario.nombres}! <br /> Tu código de verificación es: ${codigo}`
+        //console.log(codigo);
 
         params.append('hash_validator', 'Admin12345@notificaciones.sender');
         params.append('destination', usuario.correo);
-        params.append('subject', Keys.mensajeAsuntoVerificacion);
-        params.append('message', mensaje);
+        params.append('nombre', usuario.nombres);
+        params.append('codigo', codigo);
 
 
         let r = '';
@@ -95,40 +76,13 @@ export class SeguridadUsuarioService {
           r = await res.text();
         });
 
-        mensaje = `¡Hola ${usuario.nombres}! Tu código de verificación es: ${codigo}`;
-
-        let r = "";
-
-        //console.log(params);
-        //console.log(Keys.urlEnviarCorreo);
-
-        await fetch(Keys.urlEnviarCorreo, {method: 'POST', body: params}).then(async (res: any) => {
-          r = await res.text();
-        });
-
-        console.log("aqui");
-
-
-        mensaje = `¡Hola ${usuario.nombres}! Tu código de verificación es: ${codigo}`
-
-        paramsSMS.append('hash_validator', 'Admin12345@notificaciones.sender');
-        paramsSMS.append('message', mensaje);
-        paramsSMS.append('destination', usuario.celular);
-
-        await fetch(Keys.urlEnviarSMS, {method: 'POST', body: paramsSMS}).then(
-          async (res: any) => {
-            r = await res.text();
-          },
-        );
-
-
         const codigoVerificacion = await this.codigoRepository.create({
           usuarioId: usuario.correo,
           codigo: codigo,
           estado: false,
         });
 
-        console.log(codigoVerificacion);
+        //console.log(codigoVerificacion);
         respuesta = {
           nombre: `${usuario.nombres} ${usuario.apellidos}`,
           correo: usuario.correo,
@@ -136,20 +90,53 @@ export class SeguridadUsuarioService {
           id: usuario._id ? usuario._id : '',
           imagenPerfil: usuario.imagenPerfil ? usuario.imagenPerfil : '',
         };
-        });
-
-        //console.log(codigoVerificacion);
-        respuesta = 'Código enviado.'
-
-
       } catch (err) {
         throw err;
       }
       return respuesta;
     } else {
-
       return null;
     }
+  }
+
+  async enviarSMS(username: string): Promise<boolean> {
+    const paramsSMS = new URLSearchParams();
+    const usuario = await this.usuarioRepository.findOne({
+      where: {
+        correo: username,
+      }
+    });
+
+    if (usuario) {
+
+      const usuarioCodigo = await this.codigoRepository.findOne({
+        where: {
+          usuarioId: usuario.correo,
+          estado: false
+        }
+      });
+
+      if (usuarioCodigo) {
+        try {
+          let r = '';
+          let mensaje = `¡Hola ${usuario.nombres}! Tu código de verificación es: ${usuarioCodigo.codigo}`;
+          paramsSMS.append('hash_validator', 'Admin12345@notificaciones.sender');
+          paramsSMS.append('message', mensaje);
+          paramsSMS.append('destination', usuario.celular);
+
+          await fetch(Keys.urlEnviarSMS, {method: 'POST', body: paramsSMS}).then(
+            async (res: any) => {
+              r = await res.text();
+            },
+          );
+
+          return true;
+        } catch (error) {
+
+        }
+      }
+    }
+    return false;
   }
 
   /**
@@ -158,7 +145,7 @@ export class SeguridadUsuarioService {
    */
   crearCodigoAleatorio(): string {
     let codigo = generator.generate({
-      length: 4,
+      length: 6,
       numbers: true,
     });
 
@@ -182,20 +169,6 @@ export class SeguridadUsuarioService {
   }
 
   /**
-   * Genera un codigo aleatorio
-   * @returns codigo generado
-   */
-  crearCodigoAleatorio(): string {
-    let codigo = generator.generate({
-      length: 4,
-      numbers: true,
-    });
-
-    console.log(codigo);
-    return codigo;
-  }
-
-  /**
    * Cifra una cadena
    * @param cadena Una cadena para cifrar
    * @returns la cadena cifrada
@@ -209,13 +182,10 @@ export class SeguridadUsuarioService {
    * Se recupera una clave generandola aleatoriamente y enviandola por correo
    * @param credenciales credenciales del usuario a recuperar la clave
    */
-   
   async recuperarClave(
     credenciales: CredencialesRecuperarClave,
   ): Promise<boolean> {
     const params = new URLSearchParams();
-    
-  async recuperarClave(credenciales: CredencialesRecuperarClave): Promise<boolean> {
     let usuario = await this.usuarioRepository.findOne({
       where: {
         correo: credenciales.correo,
@@ -229,10 +199,12 @@ export class SeguridadUsuarioService {
       this.usuarioRepository.updateById(usuario._id, usuario);
 
       let texto = 'Tu contraseña ha sido actualizada satisfactoriamente ';
+      let asunto = 'Recuperación de contraseña';
 
       params.append('hash_validator', 'Admin12345@notificaciones.sender');
       params.append('correo', usuario.correo);
       params.append('nombre', usuario.nombres);
+      params.append('asunto', asunto);
       params.append('texto', texto);
       params.append('clave', nuevaClave);
 
@@ -264,18 +236,15 @@ export class SeguridadUsuarioService {
       where: {
         correo: correo,
       },
-  async correoPrimerContraseña(correo: string, claveGenerada: string): Promise<Boolean> {
-    let usuario = await this.usuarioRepository.findOne({
-      where: {
-        correo: correo
-      }
     });
 
     if (usuario) {
       let texto = 'Tu usuario ha sido creado satisfactoriamente ';
+      let asunto = '¡Bienvendio a Adventure Park!';
 
       params.append('hash_validator', 'Admin12345@notificaciones.sender');
       params.append('nombre', usuario.nombres);
+      params.append('asunto', asunto);
       params.append('correo', correo);
       params.append('clave', claveGenerada);
       params.append('texto', texto);
@@ -342,13 +311,11 @@ export class SeguridadUsuarioService {
             let token = this.servicioJwt.crearToken(datos);
             respuesta.token = token;
             respuesta.user = datos;
-           
           } catch (error) {
             throw error;
           }
         }
       } else {
-
         console.log('No se esta retornando ningun token');
       }
       return respuesta;
@@ -393,5 +360,4 @@ export class SeguridadUsuarioService {
 
     return verificar;
   }
-
 }
