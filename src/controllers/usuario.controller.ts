@@ -56,19 +56,29 @@ export class UsuarioController {
       },
     })
     usuario: Omit<Usuario, '_id'>,
-  ): Promise<Usuario> {
+  ): Promise<Usuario | null> {
     let claveGenerada = this.servicioSeguridad.crearClaveAleatoria();
     let claveCifrada = this.servicioSeguridad.cifrarCadena(claveGenerada);
     usuario.clave = claveCifrada;
     console.log(claveGenerada);
 
-    // Notificar al usuario de que se ha creado en el sistema
-    const usuarioCreado = await this.usuarioRepository.create(usuario);
-    await this.servicioSeguridad.correoPrimerContraseña(
-      usuario.correo,
-      claveGenerada,
-    );
-    return usuarioCreado;
+    let peticionUsuario = await this.usuarioRepository.findOne({
+      where: {
+        correo: usuario.correo
+      }
+    });
+
+    if (!peticionUsuario) {
+      // Notificar al usuario de que se ha creado en el sistema
+      const usuarioCreado = await this.usuarioRepository.create(usuario);
+      await this.servicioSeguridad.correoPrimerContraseña(usuario.correo, claveGenerada);
+      return usuarioCreado;
+
+    } else {
+      return null
+    }
+
+
   }
 
   @get('/usuarios/count')
