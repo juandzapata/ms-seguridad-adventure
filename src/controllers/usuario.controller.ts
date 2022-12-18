@@ -365,6 +365,25 @@ export class UsuarioController {
     }
   }
 
+  @get('/usuario/obtener-email/{email}')
+  @response(200, {
+    description: 'Usuario con este email',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(Usuario, {includeRelations: true}),
+      },
+    },
+  })
+  async findByEmail(
+    @param.path.string('email') email: string,
+  ): Promise<Usuario | null> {
+    return this.usuarioRepository.findOne({
+      where: {
+        correo: email,
+      },
+    });
+  }
+
   /**
    *
    * @param jwt
