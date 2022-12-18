@@ -68,11 +68,6 @@ export class UsuarioController {
       }
     });
 
-    console.log(peticionUsuario);
-    let prueba = peticionUsuario ? 'true' : false;
-    console.log(prueba);
-
-
     if (!peticionUsuario) {
       // Notificar al usuario de que se ha creado en el sistema
       const usuarioCreado = await this.usuarioRepository.create(usuario);
