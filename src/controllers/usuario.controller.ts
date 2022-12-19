@@ -22,6 +22,7 @@ import {
 import fetch from 'node-fetch';
 import {Keys} from '../config/keys';
 import {
+  CompraEmail,
   CredencialesLogin,
   CredencialesRecuperarClave,
   Usuario
@@ -298,6 +299,34 @@ export class UsuarioController {
     } catch (err) {
       throw new HttpErrors[400](
         `Se ha generado un error en la recuperaciónde la clave para el correo: ${credenciales.correo}`,
+      );
+    }
+  }
+
+  @post('/email-compra')
+  @response(200, {
+    description: 'Correo de confirmacion de compra',
+    content: {
+      'application/json': {schema: getModelSchemaRef(CompraEmail)},
+    },
+  })
+  async enviarEmailCompra(
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: getModelSchemaRef(CompraEmail),
+        },
+      },
+    })
+    credenciales: CompraEmail,
+  ): Promise<Boolean> {
+    try {
+      console.log("estoy en seguridad");
+
+      return await this.servicioSeguridad.enviarEmailCompra(credenciales);
+    } catch (err) {
+      throw new HttpErrors[400](
+        `Se ha generado un error en la recuperaciónde la clave para el correo:`,
       );
     }
   }

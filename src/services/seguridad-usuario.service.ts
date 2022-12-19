@@ -4,6 +4,7 @@ import {HttpErrors} from '@loopback/rest';
 import fetch from 'node-fetch';
 import {Keys} from '../config/keys';
 import {
+  CompraEmail,
   CredencialesLogin,
   CredencialesRecuperarClave,
   Usuario
@@ -402,5 +403,28 @@ export class SeguridadUsuarioService {
     }
 
     return verificar;
+  }
+
+  async enviarEmailCompra(credenciales: CompraEmail): Promise<boolean> {
+    const params = new URLSearchParams();
+    params.append('hash_validator', 'Admin12345@notificaciones.sender');
+    params.append('nombreUsuario', credenciales.nombreUsuario);
+    params.append('correoUsuario', credenciales.correoUsuario);
+    params.append('cedulaUsuario', credenciales.cedulaUsuario);
+    params.append('idCompra', credenciales.compraId);
+    params.append('fechaCompra', credenciales.fechaCompra);
+    params.append('totalCompra', credenciales.totalCompra);
+
+    let r = '';
+
+    await fetch(Keys.urlEnviarCorreoCompra, {method: 'POST', body: params}).then(
+      async (res: any) => {
+        r = await res.text();
+      },
+    );
+
+    console.log("estoy en enviar email compra");
+
+    return r == 'OK';
   }
 }

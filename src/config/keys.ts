@@ -8,4 +8,6 @@ export namespace Keys {
   export const mensajeAsuntoVerificacion =
     'Código de verificación Adventure Park';
   export const urlEnviarSMS = 'http://127.0.0.1:5000/sms';
+  export const urlEnviarCorreoCompra = 'http://127.0.0.1:5000/email-compra';
+
 }
