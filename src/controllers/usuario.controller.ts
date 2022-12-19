@@ -214,6 +214,21 @@ export class UsuarioController {
     }
   }
 
+  @get('/generate-code/{username}')
+  @response(200, {
+    description: 'Generar codigo para confirmacion de pago.',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(Object),
+      },
+    },
+  })
+  async generateCode(
+    @param.path.string('username') username: string,
+  ): Promise<boolean> {
+    return this.servicioSeguridad.generateCode(username);
+  }
+
   @get('/enviarSMS/{username}')
   @response(200, {
     description: 'Enviar SMS',
