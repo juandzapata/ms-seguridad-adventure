@@ -99,6 +99,49 @@ export class SeguridadUsuarioService {
     }
   }
 
+  async generateCode(username: string): Promise<boolean> {
+    let respuesta = false;
+    const paramsSMS = new URLSearchParams();
+
+    const usuario = await this.usuarioRepository.findOne({
+      where: {
+        correo: username
+      }
+    });
+
+    if (usuario) {
+      let codigo = this.crearCodigoAleatorio();
+      console.log(codigo);
+
+      const generarCodigoUsuario = await this.codigoRepository.create({
+        usuarioId: usuario.correo,
+        codigo: codigo,
+        estado: false,
+      });
+
+      try {
+        let r = '';
+        let mensaje = `¡Hola ${usuario.nombres}! EL código para confirmar tu pago es: ${codigo}`;
+        paramsSMS.append('hash_validator', 'Admin12345@notificaciones.sender');
+        paramsSMS.append('message', mensaje);
+        paramsSMS.append('destination', usuario.celular);
+
+        await fetch(Keys.urlEnviarSMS, {method: 'POST', body: paramsSMS}).then(
+          async (res: any) => {
+            r = await res.text();
+            respuesta = true;
+            console.log("SMS enviado.");
+
+          },
+        );
+      } catch (error) {
+
+      }
+
+    }
+    return respuesta;
+  }
+
   async enviarSMS(username: string): Promise<boolean> {
     const paramsSMS = new URLSearchParams();
     const usuario = await this.usuarioRepository.findOne({
